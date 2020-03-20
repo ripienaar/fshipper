@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -37,13 +38,18 @@ func main() {
 		log.Fatalf("Please set a NATS subject to publish to using SHIPPER_SUBJECT\n")
 	}
 
+	partition, name, err := util.Partition()
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	nc, err := util.NewConnection()
 	if err != nil {
 		log.Fatalf("Could not connect to NATS: %s\n", err)
 	}
 
 	for {
-		err = publishFile(source, subject, nc)
+		err = publishFile(source, fmt.Sprintf("%s.p%d.%s", subject, partition, name), nc)
 		if err != nil {
 			log.Printf("Could not publish file: %s", err)
 		}
