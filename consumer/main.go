@@ -24,17 +24,22 @@ var subjectParse *regexp.Regexp
 func main() {
 	subject := os.Getenv("SHIPPER_SUBJECT")
 	if subject == "" {
-		log.Fatalf("Please set a NATS subject to consume using SHIPPER_SUBJECT\n")
+		log.Fatalf("Please set a NATS subject to consume using SHIPPER_SUBJECT")
 	}
 
 	directory := os.Getenv("SHIPPER_DIRECTORY")
 	if directory == "" {
-		log.Fatalf("Please set a directory to write using SHIPPER_DIRECTORY\n")
+		log.Fatalf("Please set a directory to write using SHIPPER_DIRECTORY")
 	}
 
 	output := os.Getenv("SHIPPER_OUTPUT")
 	if output == "" {
-		log.Fatalf("Please set a file to write using SHIPPER_OUTPUT\n")
+		log.Fatalf("Please set a file to write using SHIPPER_OUTPUT")
+	}
+
+	streamSource := os.Getenv("SHIPPER_STREAM_TARGET")
+	if streamSource == "" {
+		log.Fatalf("Please set a JetStream target subject using SHIPPER_STREAM_TARGET")
 	}
 
 	subjectParse = regexp.MustCompile(fmt.Sprintf(`%s\.p\d+\.(.+)`, subject))
@@ -43,7 +48,7 @@ func main() {
 
 	// start consumers for every partition until ctx interrupt
 	for _, partition := range partitions() {
-		err := consumer(ctx, wg, subject, partition, directory, output)
+		err := consumer(ctx, wg, streamSource, partition, directory, output)
 		if err != nil {
 			log.Fatalf("Consuming messages failed: %s", err)
 		}
@@ -145,7 +150,7 @@ func consumer(ctx context.Context, wg *sync.WaitGroup, prefixSubject string, par
 	}
 
 	lines := make(chan *nats.Msg, 8*1024)
-	subject := fmt.Sprintf("%s.p%s.>", prefixSubject, partition)
+	subject := fmt.Sprintf("%s.p%s", prefixSubject, partition)
 
 	_, err = nc.ChanSubscribe(subject, lines)
 	if err != nil {
